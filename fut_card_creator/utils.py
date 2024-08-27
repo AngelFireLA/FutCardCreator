@@ -153,6 +153,25 @@ def fetch_all_teams(api_key="3"):
 
     return teams
 
+def get_important_stats(stat):
+    important_stats = {
+        "ST": ["SHO", "DRI", "PAC"],
+        "RW": ["SHO", "DRI", "PAC"],
+        "LW": ["SHO", "DRI", "PAC"],
+        "LM": ["DRI", "PAC", "PAS"],
+        "RM": ["DRI", "PAC", "PAS"],
+        "CAM": ["SHO", "DRI", "PAC"],
+        "CF": ["SHO", "DRI", "PAS"],
+        "CM": ["SHO", "DRI", "PAS", "DEF"],
+        "CDM": ["PHY", "DEF", "PAS"],
+        "LB": ["DEF", "PAC", "PAS"],
+        "RB": ["DEF", "PAC", "PAS"],
+        "CB": ["DEF", "PHY", "PAC"]
+    }
+    if stat in important_stats:
+        return important_stats[stat]
+    else:
+        return []
 
 def get_closest_team_name(club_name, teams):
     team_names = [team['strTeam'] for team in teams]
@@ -197,3 +216,25 @@ def get_club_logo(club_name, api_key="3"):
 
                     return image
     return None
+
+def calculate_overall_ratings(stats):
+    coeff_multiplier = 1.022
+    formulas = {
+        "ST": lambda s: (coeff_multiplier*0.40 * s["SHO"]) + (coeff_multiplier*0.30 * s["PAC"]) + (coeff_multiplier*0.20 * s["DRI"]) + (coeff_multiplier*0.10 * s["PHY"]),
+        "RW": lambda s: (coeff_multiplier*0.35 * s["DRI"]) + (coeff_multiplier*0.30 * s["PAC"]) + (coeff_multiplier*0.25 * s["SHO"]) + (coeff_multiplier*0.10 * s["PAS"]),
+        "LW": lambda s: (coeff_multiplier*0.35 * s["DRI"]) + (coeff_multiplier*0.30 * s["PAC"]) + (coeff_multiplier*0.25 * s["SHO"]) + (coeff_multiplier*0.10 * s["PAS"]),
+        "CF": lambda s: (coeff_multiplier*0.40 * s["SHO"]) + (coeff_multiplier*0.30 * s["DRI"]) + (coeff_multiplier*0.20 * s["PAC"]) + (coeff_multiplier*0.10 * s["PAS"]),
+        "CAM": lambda s: (coeff_multiplier*0.35 * s["DRI"]) + (coeff_multiplier*0.35 * s["PAS"]) + (coeff_multiplier*0.25 * s["SHO"]) + (coeff_multiplier*0.05 * s["PAC"]),
+        "CM": lambda s: (coeff_multiplier*0.45 * s["PAS"]) + (coeff_multiplier*0.30 * s["DRI"]) + (coeff_multiplier*0.10 * s["DEF"]) + (coeff_multiplier*0.15 * s["SHO"]),
+        "CDM": lambda s: (coeff_multiplier*0.30 * s["DEF"]) + (coeff_multiplier*0.30 * s["PAS"]) + (coeff_multiplier*0.30 * s["PHY"]) + (coeff_multiplier*0.10 * s["DRI"]),
+        "RM": lambda s: (coeff_multiplier*0.35 * s["PAC"]) + (coeff_multiplier*0.25 * s["DRI"]) + (coeff_multiplier*0.25 * s["PAS"]) + (coeff_multiplier*0.15 * s["SHO"]),
+        "LM": lambda s: (coeff_multiplier*0.35 * s["PAC"]) + (coeff_multiplier*0.25 * s["DRI"]) + (coeff_multiplier*0.25 * s["PAS"]) + (coeff_multiplier*0.15 * s["SHO"]),
+        "LB": lambda s: (coeff_multiplier*0.30 * s["DEF"]) + (coeff_multiplier*0.35 * s["PAC"]) + (coeff_multiplier*0.10 * s["PHY"]) + (coeff_multiplier*0.25 * s["PAS"]),
+        "RB": lambda s: (coeff_multiplier*0.30 * s["DEF"]) + (coeff_multiplier*0.35 * s["PAC"]) + (coeff_multiplier*0.10 * s["PHY"]) + (coeff_multiplier*0.25 * s["PAS"]),
+        "CB": lambda s: (coeff_multiplier*0.45 * s["DEF"]) + (coeff_multiplier*0.40 * s["PHY"]) + (coeff_multiplier*0.15 * s["PAC"]),
+    }
+
+    for position, formula in formulas.items():
+        ovr = formula(stats)
+        print(f"{position}: {round(ovr)}")
+    print()

@@ -3,8 +3,13 @@ import time
 from PIL import Image, ImageDraw, ImageFont
 from utils import *
 
+import random
+
 
 class Player:
+    positions = ["ST", "RW", "LW", "CF", "CAM", "CM", "CDM", "RM", "LM", "LB", "CB", "RB"]
+    default_stats = ["PAC", "SHO", "PAS", "DRI", "DEF", "PHY"]
+
     def __init__(self, name, photo_path, club, nation, overall, position, stats):
         self.name = name
         self.photo_path = photo_path
@@ -17,6 +22,31 @@ class Player:
     def update_stat(self, stat, new_value):
         self.stats[stat] = new_value
 
+    def update_stats_based_on_overall(self, new_overall):
+        overall_diff = new_overall - self.overall
+        original_stats = True
+        for stat in self.stats.keys():
+            if stat not in self.default_stats:
+                original_stats = False
+        if original_stats and self.position not in self.positions:
+            for i in random.sample(self.stats.keys(), 3):
+                self.stats[i] += overall_diff
+            for i in random.sample(self.stats.keys(), 3):
+                self.stats[i] += int(overall_diff/2)
+        else:
+            stats_to_increase = random.sample(get_important_stats(self.position), 2)
+            for stat in stats_to_increase:
+                self.stats[stat] += random.randint(1, overall_diff)
+            other_stats_to_increase = random.sample([stat for stat in self.stats.keys() if stat not in stats_to_increase], 2)
+            for stat in other_stats_to_increase:
+                self.stats[stat] += int(overall_diff / 2)
+
+
+
+    def update_overall(self, new_overall, update_stats=True):
+        if update_stats:
+            self.update_stats_based_on_overall(new_overall)
+        self.overall = new_overall
 class Card:
     def __init__(self, player, card_type):
         self.player = player
@@ -81,11 +111,54 @@ class Card:
     def export_image(self, file_path):
         self.image.save(file_path)
 
+    def update_overall(self, new_overall):
+        self.player.update_overall(new_overall)
+
+
+
+
 
 start_time = time.time()
-player = Player("messi", "messi.png", "Paris Saint-Germain", "Argentina", 91, "RW", {"PAC": 81, "SHO": 89, "PAS": 90, "DRI": 94, "DEF": 34, "PHY": 64})
-card = Card(player, "rare_gold")
+player_stats = {"PAC": 80, "SHO": 87, "PAS": 90, "DRI": 94, "DEF": 34, "PHY": 64}
+messi = Player("messi", "messi.png", "Paris Saint-Germain", "Argentina", 91, "RW", player_stats)
+calculate_overall_ratings(player_stats)
+card = Card(messi, "rare_gold")
 card.create_image()
 output_path = 'test.png'
 card.export_image(output_path)
-print(time.time()-start_time)
+card.update_overall(94)
+card.create_image()
+output_path = 'test2.png'
+card.export_image(output_path)
+
+#messi
+player_stats = {"PAC": 74, "SHO": 88, "PAS": 94, "DRI": 87, "DEF": 65, "PHY": 78}
+calculate_overall_ratings(player_stats)
+
+#kimmich
+player_stats = {"PAC": 70, "SHO": 74, "PAS": 88, "DRI": 83, "DEF": 82, "PHY": 78}
+calculate_overall_ratings(player_stats)
+
+#balde
+player_stats = {"PAC": 91, "SHO": 48, "PAS": 73, "DRI": 78, "DEF": 75, "PHY": 64}
+calculate_overall_ratings(player_stats)
+
+#alexander arnold
+player_stats = {"PAC": 76, "SHO": 71, "PAS": 90, "DRI": 80, "DEF": 80, "PHY": 74}
+calculate_overall_ratings(player_stats)
+
+#de jong
+player_stats = {"PAC": 79, "SHO": 56, "PAS": 75, "DRI": 74, "DEF": 89, "PHY": 80}
+calculate_overall_ratings(player_stats)
+
+#kroos
+player_stats = {"PAC": 51, "SHO": 80, "PAS": 90, "DRI": 81, "DEF": 71, "PHY": 71}
+calculate_overall_ratings(player_stats)
+
+#haaland
+player_stats = {"PAC": 89, "SHO": 93, "PAS": 68, "DRI": 81, "DEF": 45, "PHY": 88}
+calculate_overall_ratings(player_stats)
+
+#mbappé
+player_stats = {"PAC": 97, "SHO": 90, "PAS": 80, "DRI": 92, "DEF": 36, "PHY": 78}
+calculate_overall_ratings(player_stats)
