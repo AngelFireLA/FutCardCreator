@@ -1,9 +1,11 @@
 import os
+from io import BytesIO
 
 import requests
-from fuzzywuzzy import process
 from PIL import Image, ImageDraw, ImageFont
-from io import BytesIO
+from fuzzywuzzy import process
+
+current_folder = os.path.dirname(os.path.abspath(__file__))
 
 
 def get_closest_country_name(query):
@@ -18,7 +20,7 @@ def get_closest_country_name(query):
 
 def get_flag_image(country_name):
     # Create cache directory if it doesn't exist
-    cache_dir = "images/nation_cache"
+    cache_dir = os.path.join(current_folder, "images/nation_cache")
     # Construct the file path for the cached image
     cache_file_path = os.path.join(cache_dir, f"{country_name}.png")
 
@@ -29,10 +31,7 @@ def get_flag_image(country_name):
     # Fetch the flag image from the API if not cached
     closest_country_name = get_closest_country_name(country_name)
 
-
     if closest_country_name:
-
-
 
         response = requests.get(f"https://restcountries.com/v3.1/name/{closest_country_name}")
         if response.status_code == 200:
@@ -49,6 +48,7 @@ def get_flag_image(country_name):
 
                 return image
     return None
+
 
 def add_image_to_image(original_image, image, position, size=None, center=False):
     if size:
@@ -71,6 +71,7 @@ def add_image_to_image(original_image, image, position, size=None, center=False)
     original_image.paste(image, position, image)
 
     return original_image
+
 
 def add_text_to_image(image, text, position, font_path, font_size, center=False):
     # Initialize ImageDraw object
@@ -95,10 +96,10 @@ def add_text_to_image(image, text, position, font_path, font_size, center=False)
         # Add centered text to the image
         draw.text(centered_position, text, font=font, fill=(73, 57, 15))  # Black text
 
-
     return image
 
-def get_card_stats_pos(stats:list=None):
+
+def get_card_stats_pos(stats: list = None):
     if not stats:
         stats = ["PAC", "SHO", "PAS", "DRI", "DEF", "PHY"]
     left_x = 180
@@ -127,6 +128,7 @@ def get_card_stats_pos(stats:list=None):
     }
     return stats_text_pos_dict, stats_num_pos_dict
 
+
 def fetch_all_teams(api_key="3"):
     url = f"https://www.thesportsdb.com/api/v1/json/{api_key}/search_all_teams.php?l="
     leagues = [
@@ -153,6 +155,7 @@ def fetch_all_teams(api_key="3"):
 
     return teams
 
+
 def get_important_stats(stat):
     important_stats = {
         "ST": ["SHO", "DRI", "PAC"],
@@ -173,6 +176,7 @@ def get_important_stats(stat):
     else:
         return []
 
+
 def get_closest_team_name(club_name, teams):
     team_names = [team['strTeam'] for team in teams]
     closest_match = process.extractOne(club_name, team_names)
@@ -181,7 +185,7 @@ def get_closest_team_name(club_name, teams):
 
 def get_club_logo(club_name, api_key="3"):
     # Create cache directory if it doesn't exist
-    cache_dir = "images/club_logo_cache"
+    cache_dir = os.path.join(current_folder, "images/club_logo_cache")
     os.makedirs(cache_dir, exist_ok=True)
 
     # Construct the file path for the cached image
@@ -217,24 +221,44 @@ def get_club_logo(club_name, api_key="3"):
                     return image
     return None
 
-def calculate_overall_ratings(stats):
+
+def calculate_overall_ratings(stats, debug=False):
     coeff_multiplier = 1.022
     formulas = {
-        "ST": lambda s: (coeff_multiplier*0.40 * s["SHO"]) + (coeff_multiplier*0.30 * s["PAC"]) + (coeff_multiplier*0.20 * s["DRI"]) + (coeff_multiplier*0.10 * s["PHY"]),
-        "RW": lambda s: (coeff_multiplier*0.35 * s["DRI"]) + (coeff_multiplier*0.30 * s["PAC"]) + (coeff_multiplier*0.25 * s["SHO"]) + (coeff_multiplier*0.10 * s["PAS"]),
-        "LW": lambda s: (coeff_multiplier*0.35 * s["DRI"]) + (coeff_multiplier*0.30 * s["PAC"]) + (coeff_multiplier*0.25 * s["SHO"]) + (coeff_multiplier*0.10 * s["PAS"]),
-        "CF": lambda s: (coeff_multiplier*0.40 * s["SHO"]) + (coeff_multiplier*0.30 * s["DRI"]) + (coeff_multiplier*0.20 * s["PAC"]) + (coeff_multiplier*0.10 * s["PAS"]),
-        "CAM": lambda s: (coeff_multiplier*0.35 * s["DRI"]) + (coeff_multiplier*0.35 * s["PAS"]) + (coeff_multiplier*0.25 * s["SHO"]) + (coeff_multiplier*0.05 * s["PAC"]),
-        "CM": lambda s: (coeff_multiplier*0.45 * s["PAS"]) + (coeff_multiplier*0.30 * s["DRI"]) + (coeff_multiplier*0.10 * s["DEF"]) + (coeff_multiplier*0.15 * s["SHO"]),
-        "CDM": lambda s: (coeff_multiplier*0.30 * s["DEF"]) + (coeff_multiplier*0.30 * s["PAS"]) + (coeff_multiplier*0.30 * s["PHY"]) + (coeff_multiplier*0.10 * s["DRI"]),
-        "RM": lambda s: (coeff_multiplier*0.35 * s["PAC"]) + (coeff_multiplier*0.25 * s["DRI"]) + (coeff_multiplier*0.25 * s["PAS"]) + (coeff_multiplier*0.15 * s["SHO"]),
-        "LM": lambda s: (coeff_multiplier*0.35 * s["PAC"]) + (coeff_multiplier*0.25 * s["DRI"]) + (coeff_multiplier*0.25 * s["PAS"]) + (coeff_multiplier*0.15 * s["SHO"]),
-        "LB": lambda s: (coeff_multiplier*0.30 * s["DEF"]) + (coeff_multiplier*0.35 * s["PAC"]) + (coeff_multiplier*0.10 * s["PHY"]) + (coeff_multiplier*0.25 * s["PAS"]),
-        "RB": lambda s: (coeff_multiplier*0.30 * s["DEF"]) + (coeff_multiplier*0.35 * s["PAC"]) + (coeff_multiplier*0.10 * s["PHY"]) + (coeff_multiplier*0.25 * s["PAS"]),
-        "CB": lambda s: (coeff_multiplier*0.45 * s["DEF"]) + (coeff_multiplier*0.40 * s["PHY"]) + (coeff_multiplier*0.15 * s["PAC"]),
+        "ST": lambda s: (coeff_multiplier * 0.40 * s["SHO"]) + (coeff_multiplier * 0.30 * s["PAC"]) + (
+                coeff_multiplier * 0.20 * s["DRI"]) + (coeff_multiplier * 0.10 * s["PHY"]),
+        "RW": lambda s: (coeff_multiplier * 0.35 * s["DRI"]) + (coeff_multiplier * 0.30 * s["PAC"]) + (
+                coeff_multiplier * 0.25 * s["SHO"]) + (coeff_multiplier * 0.10 * s["PAS"]),
+        "LW": lambda s: (coeff_multiplier * 0.35 * s["DRI"]) + (coeff_multiplier * 0.30 * s["PAC"]) + (
+                coeff_multiplier * 0.25 * s["SHO"]) + (coeff_multiplier * 0.10 * s["PAS"]),
+        "CF": lambda s: (coeff_multiplier * 0.40 * s["SHO"]) + (coeff_multiplier * 0.30 * s["DRI"]) + (
+                coeff_multiplier * 0.20 * s["PAC"]) + (coeff_multiplier * 0.10 * s["PAS"]),
+        "CAM": lambda s: (coeff_multiplier * 0.35 * s["DRI"]) + (coeff_multiplier * 0.35 * s["PAS"]) + (
+                coeff_multiplier * 0.25 * s["SHO"]) + (coeff_multiplier * 0.05 * s["PAC"]),
+        "CM": lambda s: (coeff_multiplier * 0.45 * s["PAS"]) + (coeff_multiplier * 0.30 * s["DRI"]) + (
+                coeff_multiplier * 0.10 * s["DEF"]) + (coeff_multiplier * 0.15 * s["SHO"]),
+        "CDM": lambda s: (coeff_multiplier * 0.30 * s["DEF"]) + (coeff_multiplier * 0.30 * s["PAS"]) + (
+                coeff_multiplier * 0.30 * s["PHY"]) + (coeff_multiplier * 0.10 * s["DRI"]),
+        "RM": lambda s: (coeff_multiplier * 0.35 * s["PAC"]) + (coeff_multiplier * 0.25 * s["DRI"]) + (
+                coeff_multiplier * 0.25 * s["PAS"]) + (coeff_multiplier * 0.15 * s["SHO"]),
+        "LM": lambda s: (coeff_multiplier * 0.35 * s["PAC"]) + (coeff_multiplier * 0.25 * s["DRI"]) + (
+                coeff_multiplier * 0.25 * s["PAS"]) + (coeff_multiplier * 0.15 * s["SHO"]),
+        "LB": lambda s: (coeff_multiplier * 0.30 * s["DEF"]) + (coeff_multiplier * 0.35 * s["PAC"]) + (
+                coeff_multiplier * 0.10 * s["PHY"]) + (coeff_multiplier * 0.25 * s["PAS"]),
+        "RB": lambda s: (coeff_multiplier * 0.30 * s["DEF"]) + (coeff_multiplier * 0.35 * s["PAC"]) + (
+                coeff_multiplier * 0.10 * s["PHY"]) + (coeff_multiplier * 0.25 * s["PAS"]),
+        "CB": lambda s: (coeff_multiplier * 0.45 * s["DEF"]) + (coeff_multiplier * 0.40 * s["PHY"]) + (
+                coeff_multiplier * 0.15 * s["PAC"]),
     }
 
+    results = {}
     for position, formula in formulas.items():
         ovr = formula(stats)
-        print(f"{position}: {round(ovr)}")
-    print()
+        results[position] = round(ovr)
+        if debug:
+            print(f"{position}: {results[position]}")
+
+    if debug:
+        print()
+
+    return results

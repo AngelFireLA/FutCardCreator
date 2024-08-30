@@ -1,9 +1,12 @@
-import time
-
-from PIL import Image, ImageDraw, ImageFont
-from utils import *
-
+import os
 import random
+
+from PIL import Image
+
+from fut_card_creator.utils import get_flag_image, get_club_logo, get_important_stats, get_card_stats_pos, \
+    add_image_to_image, add_text_to_image, calculate_overall_ratings
+
+current_folder = os.path.dirname(os.path.abspath(__file__))
 
 
 class Player:
@@ -22,31 +25,82 @@ class Player:
     def update_stat(self, stat, new_value):
         self.stats[stat] = new_value
 
-    def update_stats_based_on_overall(self, new_overall):
+    def weighted_random_choice(self, stats, weights):
+        total_weight = sum(weights.values())
+        random_choice = random.uniform(0, total_weight)
+        cumulative_weight = 0
+        for stat, weight in weights.items():
+            cumulative_weight += weight
+            if random_choice <= cumulative_weight:
+                return stat
+        return random.choice(list(stats.keys()))  # fallback
+
+    def update_stats_based_on_overall(self, new_overall, calculate_type=3):
         overall_diff = new_overall - self.overall
         original_stats = True
         for stat in self.stats.keys():
             if stat not in self.default_stats:
                 original_stats = False
-        if original_stats and self.position not in self.positions:
+        if not original_stats or self.position not in self.positions:
+            calculate_type = 1
+        if calculate_type == 1:
             for i in random.sample(self.stats.keys(), 3):
-                self.stats[i] += overall_diff
+                self.stats[i] += random.randint(max(1, int(overall_diff / 2)), overall_diff * 2)
             for i in random.sample(self.stats.keys(), 3):
-                self.stats[i] += int(overall_diff/2)
-        else:
+                self.stats[i] += random.randint(1, max(1, overall_diff))
+        elif calculate_type == 2:
             stats_to_increase = random.sample(get_important_stats(self.position), 2)
             for stat in stats_to_increase:
-                self.stats[stat] += random.randint(1, overall_diff)
-            other_stats_to_increase = random.sample([stat for stat in self.stats.keys() if stat not in stats_to_increase], 2)
+                self.stats[stat] += random.randint(max(1, int(overall_diff / 2)), overall_diff * 2)
+            other_stats_to_increase = random.sample(
+                [stat for stat in self.stats.keys() if stat not in stats_to_increase], 2)
             for stat in other_stats_to_increase:
-                self.stats[stat] += int(overall_diff / 2)
+                self.stats[stat] += random.randint(1, max(1, overall_diff))
+        elif calculate_type == 3:
+            original_real_overall = calculate_overall_ratings(self.stats)[self.position]
+            current_real_overall = original_real_overall
 
+            # Create a weight mapping based on the position's formula
+            position_weights = {
+                "ST": {"SHO": 0.40, "PAC": 0.30, "DRI": 0.20, "PHY": 0.10},
+                "RW": {"DRI": 0.35, "PAC": 0.30, "SHO": 0.25, "PAS": 0.10},
+                "LW": {"DRI": 0.35, "PAC": 0.30, "SHO": 0.25, "PAS": 0.10},
+                "CF": {"SHO": 0.40, "DRI": 0.30, "PAC": 0.20, "PAS": 0.10},
+                "CAM": {"DRI": 0.35, "PAS": 0.35, "SHO": 0.25, "PAC": 0.05},
+                "CM": {"PAS": 0.45, "DRI": 0.30, "DEF": 0.10, "SHO": 0.15},
+                "CDM": {"DEF": 0.30, "PAS": 0.30, "PHY": 0.30, "DRI": 0.10},
+                "RM": {"PAC": 0.35, "DRI": 0.25, "PAS": 0.25, "SHO": 0.15},
+                "LM": {"PAC": 0.35, "DRI": 0.25, "PAS": 0.25, "SHO": 0.15},
+                "LB": {"DEF": 0.30, "PAC": 0.35, "PHY": 0.10, "PAS": 0.25},
+                "RB": {"DEF": 0.30, "PAC": 0.35, "PHY": 0.10, "PAS": 0.25},
+                "CB": {"DEF": 0.45, "PHY": 0.40, "PAC": 0.15},
+            }
 
+            # Set a base weight for non-key stats
+            base_weight = 0.05
+
+            # Get the weight distribution for the position
+            position_formula_weights = position_weights.get(self.position, {})
+
+            # Initialize the weights with the base weight for all stats
+            weights = {stat: base_weight for stat in self.stats.keys()}
+
+            # Update the weights with the position-specific values
+            for stat, weight in position_formula_weights.items():
+                weights[stat] = weight
+
+            while current_real_overall != original_real_overall + overall_diff:
+                stat_to_change = self.weighted_random_choice(self.stats, weights)
+                self.stats[stat_to_change] += 1
+                self.stats[stat_to_change] = min(99, self.stats[stat_to_change])
+                current_real_overall = calculate_overall_ratings(self.stats)[self.position]
 
     def update_overall(self, new_overall, update_stats=True):
         if update_stats:
             self.update_stats_based_on_overall(new_overall)
         self.overall = new_overall
+
+
 class Card:
     def __init__(self, player, card_type):
         self.player = player
@@ -54,14 +108,15 @@ class Card:
         self.image = None
 
     def create_image(self):
-        image_path = f'images/card_templates/{self.card_type}.png'
+        image_path = os.path.join(current_folder, f'images/card_templates/{self.card_type}.png')
         self.image = Image.open(image_path)
-        font_path = 'fonts/DINPro CondBold.otf'
+        font_path = os.path.join(current_folder, 'fonts/DINPro CondBold.otf')
 
         # Add name
         name_font_size = 95
         name_position = (356, 645)
-        self.image = add_text_to_image(self.image, self.player.name.upper(), name_position, font_path, name_font_size, center=True)
+        self.image = add_text_to_image(self.image, self.player.name.upper(), name_position, font_path, name_font_size,
+                                       center=True)
 
         # Add club
         club_image = get_club_logo(self.player.club)
@@ -78,12 +133,14 @@ class Card:
         # Add overall
         overall_font_size = 150
         overall_position = (150, 150)
-        self.image = add_text_to_image(self.image, str(self.player.overall), overall_position, font_path, overall_font_size, center=True)
+        self.image = add_text_to_image(self.image, str(self.player.overall), overall_position, font_path,
+                                       overall_font_size, center=True)
 
         # Add position
         position_font_size = 70
         position_position = (150, 275)
-        self.image = add_text_to_image(self.image, self.player.position, position_position, font_path, position_font_size, center=True)
+        self.image = add_text_to_image(self.image, self.player.position, position_position, font_path,
+                                       position_font_size, center=True)
 
         # Add photo
         if self.player.photo_path:
@@ -113,52 +170,3 @@ class Card:
 
     def update_overall(self, new_overall):
         self.player.update_overall(new_overall)
-
-
-
-
-
-start_time = time.time()
-player_stats = {"PAC": 80, "SHO": 87, "PAS": 90, "DRI": 94, "DEF": 34, "PHY": 64}
-messi = Player("messi", "messi.png", "Paris Saint-Germain", "Argentina", 91, "RW", player_stats)
-calculate_overall_ratings(player_stats)
-card = Card(messi, "rare_gold")
-card.create_image()
-output_path = 'test.png'
-card.export_image(output_path)
-card.update_overall(94)
-card.create_image()
-output_path = 'test2.png'
-card.export_image(output_path)
-
-#messi
-player_stats = {"PAC": 74, "SHO": 88, "PAS": 94, "DRI": 87, "DEF": 65, "PHY": 78}
-calculate_overall_ratings(player_stats)
-
-#kimmich
-player_stats = {"PAC": 70, "SHO": 74, "PAS": 88, "DRI": 83, "DEF": 82, "PHY": 78}
-calculate_overall_ratings(player_stats)
-
-#balde
-player_stats = {"PAC": 91, "SHO": 48, "PAS": 73, "DRI": 78, "DEF": 75, "PHY": 64}
-calculate_overall_ratings(player_stats)
-
-#alexander arnold
-player_stats = {"PAC": 76, "SHO": 71, "PAS": 90, "DRI": 80, "DEF": 80, "PHY": 74}
-calculate_overall_ratings(player_stats)
-
-#de jong
-player_stats = {"PAC": 79, "SHO": 56, "PAS": 75, "DRI": 74, "DEF": 89, "PHY": 80}
-calculate_overall_ratings(player_stats)
-
-#kroos
-player_stats = {"PAC": 51, "SHO": 80, "PAS": 90, "DRI": 81, "DEF": 71, "PHY": 71}
-calculate_overall_ratings(player_stats)
-
-#haaland
-player_stats = {"PAC": 89, "SHO": 93, "PAS": 68, "DRI": 81, "DEF": 45, "PHY": 88}
-calculate_overall_ratings(player_stats)
-
-#mbappé
-player_stats = {"PAC": 97, "SHO": 90, "PAS": 80, "DRI": 92, "DEF": 36, "PHY": 78}
-calculate_overall_ratings(player_stats)
