@@ -69,7 +69,7 @@ When you update a player's overall rating, the package automatically adjusts the
 You can easily customize various aspects of the FUT card, such as:
 
 - **Player stats**: Modify individual stats using the `Player` class.
-- **Card type**: Use different card templates by specifying the `card_type` in the `Card` class.
+- **Card type**: Use different card templates by specifying the `card_type` in the `Card` class. (rare_gold, gold, silver_rare, totw, toty, tots, future_star, icon)
 - **Image paths**: Provide paths to player photos, club logos, and nation flags.
 
 ### Directory Structure

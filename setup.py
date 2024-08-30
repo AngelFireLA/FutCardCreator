@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="fut_card_creator",
-    version="0.1",
+    version="1.1",
     packages=find_packages(),
     install_requires=[
         "Pillow>=8.0.0",  # Required for image processing

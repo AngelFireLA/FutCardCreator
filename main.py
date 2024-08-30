@@ -1,10 +1,12 @@
+import time
+
 from fut_card_creator.fut_card_creator import *
 
 start_time = time.time()
 player_stats = {"PAC": 80, "SHO": 87, "PAS": 90, "DRI": 94, "DEF": 34, "PHY": 64}
 messi = Player("messi", "messi.png", "Paris Saint-Germain", "Argentina", 90, "RW", player_stats)
 calculate_overall_ratings(player_stats, debug=True)
-card = Card(messi, "rare_gold")
+card = Card(messi, "future_star")
 card.create_image()
 output_path = 'test.png'
 card.export_image(output_path)
