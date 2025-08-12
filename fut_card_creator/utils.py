@@ -1,4 +1,5 @@
 import os
+import random
 from io import BytesIO
 
 import requests
@@ -262,3 +263,64 @@ def calculate_overall_ratings(stats, debug=False):
         print()
 
     return results
+
+
+
+def generate_fake_stats(position, target_overall):
+    current_real_overall = 0
+    player_stats = {"PAC": 0, "SHO": 0, "PAS": 0, "DRI": 0, "DEF": 0, "PHY": 0}
+
+
+    # Create a weight mapping based on the position's formula
+    position_weights = {
+        "ST": {"SHO": 0.40, "PAC": 0.30, "DRI": 0.20, "PHY": 0.10},
+        "RW": {"DRI": 0.35, "PAC": 0.30, "SHO": 0.25, "PAS": 0.10},
+        "LW": {"DRI": 0.35, "PAC": 0.30, "SHO": 0.25, "PAS": 0.10},
+        "CF": {"SHO": 0.40, "DRI": 0.30, "PAC": 0.20, "PAS": 0.10},
+        "CAM": {"DRI": 0.35, "PAS": 0.35, "SHO": 0.25, "PAC": 0.05},
+        "CM": {"PAS": 0.45, "DRI": 0.30, "DEF": 0.10, "SHO": 0.15},
+        "CDM": {"DEF": 0.30, "PAS": 0.30, "PHY": 0.30, "DRI": 0.10},
+        "RM": {"PAC": 0.35, "DRI": 0.25, "PAS": 0.25, "SHO": 0.15},
+        "LM": {"PAC": 0.35, "DRI": 0.25, "PAS": 0.25, "SHO": 0.15},
+        "LB": {"DEF": 0.30, "PAC": 0.35, "PHY": 0.10, "PAS": 0.25},
+        "RB": {"DEF": 0.30, "PAC": 0.35, "PHY": 0.10, "PAS": 0.25},
+        "CB": {"DEF": 0.45, "PHY": 0.40, "PAC": 0.15},
+    }
+
+    # Set a base weight for non-key stats
+    base_weight = 0.10
+
+    # Get the weight distribution for the position
+    position_formula_weights = position_weights.get(position, {})
+
+    # Initialize the weights with the base weight for all stats
+    weights = {stat: base_weight for stat in player_stats.keys()}
+
+    # Update the weights with the position-specific values
+    for stat, weight in position_formula_weights.items():
+        weights[stat] = weight
+
+    max_differences = {}
+    for stat in player_stats:
+        max_differences[stat] = random.randint(-2, 4)
+
+    while current_real_overall != target_overall:
+        stat_to_change = weighted_random_choice(player_stats, weights)
+        player_stats[stat_to_change] += 1
+        player_stats[stat_to_change] = min(99, player_stats[stat_to_change])
+        player_stats[stat_to_change] = int(min(player_stats[stat_to_change], target_overall+max_differences[stat_to_change]))
+        current_real_overall = calculate_overall_ratings(player_stats)[position]
+    return player_stats
+
+
+
+
+def weighted_random_choice(stats, weights):
+    total_weight = sum(weights.values())
+    random_choice = random.uniform(0, total_weight)
+    cumulative_weight = 0
+    for stat, weight in weights.items():
+        cumulative_weight += weight
+        if random_choice <= cumulative_weight:
+            return stat
+    return random.choice(list(stats.keys()))  # fallback

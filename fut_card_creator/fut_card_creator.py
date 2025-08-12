@@ -4,7 +4,7 @@ import random
 from PIL import Image
 
 from fut_card_creator.utils import get_flag_image, get_club_logo, get_important_stats, get_card_stats_pos, \
-    add_image_to_image, add_text_to_image, calculate_overall_ratings
+    add_image_to_image, add_text_to_image, calculate_overall_ratings, weighted_random_choice
 
 current_folder = os.path.dirname(os.path.abspath(__file__))
 
@@ -25,15 +25,7 @@ class Player:
     def update_stat(self, stat, new_value):
         self.stats[stat] = new_value
 
-    def weighted_random_choice(self, stats, weights):
-        total_weight = sum(weights.values())
-        random_choice = random.uniform(0, total_weight)
-        cumulative_weight = 0
-        for stat, weight in weights.items():
-            cumulative_weight += weight
-            if random_choice <= cumulative_weight:
-                return stat
-        return random.choice(list(stats.keys()))  # fallback
+
 
     def update_stats_based_on_overall(self, new_overall, calculate_type=3):
         overall_diff = new_overall - self.overall
@@ -66,7 +58,7 @@ class Player:
                 "RW": {"DRI": 0.35, "PAC": 0.30, "SHO": 0.25, "PAS": 0.10},
                 "LW": {"DRI": 0.35, "PAC": 0.30, "SHO": 0.25, "PAS": 0.10},
                 "CF": {"SHO": 0.40, "DRI": 0.30, "PAC": 0.20, "PAS": 0.10},
-                "CAM": {"DRI": 0.35, "PAS": 0.35, "SHO": 0.25, "PAC": 0.05},
+                "CAM": {"DRI": 0.30, "PAS": 0.35, "SHO": 0.25, "PAC": 0.10},
                 "CM": {"PAS": 0.45, "DRI": 0.30, "DEF": 0.10, "SHO": 0.15},
                 "CDM": {"DEF": 0.30, "PAS": 0.30, "PHY": 0.30, "DRI": 0.10},
                 "RM": {"PAC": 0.35, "DRI": 0.25, "PAS": 0.25, "SHO": 0.15},
@@ -90,11 +82,13 @@ class Player:
                 weights[stat] = weight
 
             while current_real_overall != original_real_overall + overall_diff:
-                stat_to_change = self.weighted_random_choice(self.stats, weights)
-                self.stats[stat_to_change] += 1
-                self.stats[stat_to_change] = min(99, self.stats[stat_to_change])
+                stat_to_change = weighted_random_choice(self.stats, weights)
+                if current_real_overall > original_real_overall + overall_diff:
+                    self.stats[stat_to_change] -= 1
+                else:
+                    self.stats[stat_to_change] += 1
+                self.stats[stat_to_change] = max(30, min(99, self.stats[stat_to_change]))
                 current_real_overall = calculate_overall_ratings(self.stats)[self.position]
-
     def update_overall(self, new_overall, update_stats=True):
         if update_stats:
             self.update_stats_based_on_overall(new_overall)
